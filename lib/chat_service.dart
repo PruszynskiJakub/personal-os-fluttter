@@ -3,9 +3,12 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ChatService {
-  // Use localhost for iOS simulator/Android emulator/Web/macOS as needed.
-  // For macOS, localhost works.
-  static const String _baseUrl = 'http://localhost:3000/api/chat';
+  static const String _apiBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://localhost:3000',
+  );
+
+  static const String _baseUrl = '$_apiBaseUrl/api/chat';
 
   Stream<String> sendMessage(String content) async* {
     final request = http.Request('POST', Uri.parse(_baseUrl));
