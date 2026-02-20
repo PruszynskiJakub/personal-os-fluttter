@@ -14,7 +14,7 @@
             "request": "launch",
             "type": "dart",
             "args": [
-                "--dart-define=API_BASE_URL=https://marcin30318.mikrus.xyz"
+                "--dart-define=API_BASE_URL=https://marcin318-30318.wykr.es/"
             ]
         }
     ]
