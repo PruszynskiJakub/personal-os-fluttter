@@ -4,9 +4,12 @@ import 'package:flutter_client_sse/constants/sse_request_type_enum.dart';
 import 'package:flutter_client_sse/flutter_client_sse.dart';
 import '../config/app_config.dart';
 import '../models/message.dart';
+import 'package:http/http.dart' as http;
 
 class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key});
+  final String? threadUuid;
+
+  const ChatScreen({super.key, this.threadUuid});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -18,6 +21,39 @@ class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _isSending = false;
   final String backendUrl = AppConfig.backendUrl;
+  String? currentThreadUuid;
+
+  @override
+  void initState() {
+    super.initState();
+    currentThreadUuid = widget.threadUuid;
+    _loadHistory();
+  }
+
+  Future<void> _loadHistory() async {
+    if (currentThreadUuid == null) {
+      return; // No history to load
+    }
+    try {
+      final response = await http.get(
+        Uri.parse('$backendUrl/threads/$currentThreadUuid/messages'),
+      );
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        setState(() {
+          messages.clear();
+          messages.addAll(
+            data.map((json) => Message.fromJson(json as Map<String, dynamic>)),
+          );
+        });
+        _scrollToBottom();
+      } else {
+        debugPrint('Failed to load history: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('Error loading history: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -160,6 +196,7 @@ class _ChatScreenState extends State<ChatScreen> {
         body: {
           'content':
               userMessage, // Updated per user comment "app must send {content: string} as message"
+          if (currentThreadUuid != null) 'threadUuid': currentThreadUuid,
         },
       ).listen(
         (event) {
@@ -169,6 +206,14 @@ class _ChatScreenState extends State<ChatScreen> {
 
             // Try block in case backend payload isn't what we expect
             final data = jsonDecode(dataStr);
+
+            if (data is Map &&
+                data.containsKey('threadUuid') &&
+                currentThreadUuid == null) {
+              setState(() {
+                currentThreadUuid = data['threadUuid'];
+              });
+            }
 
             if (event.event == 'message' || event.event == 'text') {
               // Hono or standard SSE usually sends event empty or just streams data
